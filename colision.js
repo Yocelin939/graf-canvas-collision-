@@ -4,19 +4,18 @@ const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-document.body.style.backgroundColor = "#000000"; // Fondo beige
+document.body.style.backgroundColor = "#000000"; // Fondo negro
+
+// Crear el contador en la parte superior derecha
+document.body.insertAdjacentHTML("beforeend", '<div id="contador" style="position: absolute; top: 10px; right: 20px; color: white; font-size: 20px;">Círculos eliminados: <span id="contadorValor">0</span></div>');
 
 class Circle {
-    constructor(x, y, radius, color, speedX, speedY) {
+    constructor(x, radius, color, speedY) {
         this.x = x;
-        this.y = y;
+        this.y = -radius;
         this.radius = radius;
-        this.originalColor = color;
         this.color = color;
-        this.speedX = speedX;
         this.speedY = speedY;
-        this.enColision = false;
-        this.tiempoColision = 0;
     }
 
     draw() {
@@ -28,85 +27,60 @@ class Circle {
     }
 
     move() {
-        this.x += this.speedX;
         this.y += this.speedY;
-
-        if (this.x + this.radius > canvas.width || this.x - this.radius < 0) {
-            this.speedX = -this.speedX;
-        }
-        if (this.y + this.radius > canvas.height || this.y - this.radius < 0) {
-            this.speedY = -this.speedY;
-        }
-    }
-
-    detectCollision(other) {
-        let dx = other.x - this.x;
-        let dy = other.y - this.y;
-        let distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < this.radius + other.radius) {
-            this.enColision = true;
-            other.enColision = true;
-            this.tiempoColision = 10;
-            other.tiempoColision = 10;
-
-            this.color = "#ADD8E6"; // Azul pastel
-            other.color = "#ADD8E6";
-
-            let angle = Math.atan2(dy, dx);
-            let speed1 = Math.sqrt(this.speedX ** 2 + this.speedY ** 2);
-            let speed2 = Math.sqrt(other.speedX ** 2 + other.speedY ** 2);
-
-            this.speedX = -Math.cos(angle) * speed1;
-            this.speedY = -Math.sin(angle) * speed1;
-            other.speedX = Math.cos(angle) * speed2;
-            other.speedY = Math.sin(angle) * speed2;
+        if (this.y - this.radius > canvas.height) {
+            this.y = -this.radius;
+            this.x = Math.random() * canvas.width;
+            this.speedY = Math.random() * 3 + 1;
+            this.color = pastelColor();
         }
     }
 
-    update(circles) {
-        this.enColision = false;
-
-        this.move();
-        circles.forEach(other => {
-            if (this !== other) {
-                this.detectCollision(other);
-            }
-        });
-
-        if (!this.enColision && this.tiempoColision > 0) {
-            this.tiempoColision--;
-            if (this.tiempoColision === 0) {
-                this.color = this.originalColor;
-            }
-        }
-
-        this.draw();
+    isClicked(mouseX, mouseY) {
+        let dx = mouseX - this.x;
+        let dy = mouseY - this.y;
+        return Math.sqrt(dx * dx + dy * dy) < this.radius;
     }
 }
 
-// Función para generar colores pastel
 function pastelColor() {
     let hue = Math.random() * 360;
     return `hsl(${hue}, 70%, 80%)`;
 }
 
-// Crear círculos con colores pastel
 let circles = [];
 for (let i = 0; i < 10; i++) {
     let radius = Math.random() * 20 + 20;
-    let x = Math.random() * (canvas.width - radius * 2) + radius;
-    let y = Math.random() * (canvas.height - radius * 2) + radius;
-    let speedX = (Math.random() * 1.2 + 0.3) * (Math.random() < 0.5 ? 1 : -1);
-    let speedY = (Math.random() * 1.2 + 0.3) * (Math.random() < 0.5 ? 1 : -1);
+    let x = Math.random() * canvas.width;
+    let speedY = Math.random() * 3 + 1;
     let color = pastelColor();
-
-    circles.push(new Circle(x, y, radius, color, speedX, speedY));
+    circles.push(new Circle(x, radius, color, speedY));
 }
+
+let contador = 0;
+const contadorValor = document.getElementById("contadorValor");
+
+canvas.addEventListener("click", (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    for (let i = 0; i < circles.length; i++) {
+        if (circles[i].isClicked(mouseX, mouseY)) {
+            circles.splice(i, 1);
+            contador++;
+            contadorValor.textContent = contador;
+            break;
+        }
+    }
+});
 
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    circles.forEach(circle => circle.update(circles));
+    circles.forEach(circle => {
+        circle.move();
+        circle.draw();
+    });
     requestAnimationFrame(animate);
 }
 
